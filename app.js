@@ -7,7 +7,7 @@ const state = {
   currentView: 'home',
   flashcardIndex: 0,
   flashcardItems: [],
-  flashcardFlipped: false,
+  flashcardState: 0, // 0 = kanji/japanese, 1 = reading/hiragana, 2 = english
   quizItems: [],
   quizIndex: 0,
   quizScore: 0,
@@ -248,7 +248,7 @@ function toggleTranslations() {
 function startFlashcards() {
   state.flashcardItems = [...getItemsForCurrentCategory()];
   state.flashcardIndex = 0;
-  state.flashcardFlipped = false;
+  state.flashcardState = 0;
 
   document.getElementById('flashcard-total').textContent = state.flashcardItems.length;
   updateFlashcard();
@@ -259,40 +259,107 @@ function updateFlashcard() {
   const item = state.flashcardItems[state.flashcardIndex];
   if (!item) return;
 
+  // Reset to state 0 when navigating to a new card
+  state.flashcardState = 0;
+
   const card = document.getElementById('flashcard');
-  card.classList.remove('flipped');
-  state.flashcardFlipped = false;
+  card.classList.remove('flipped', 'state-0', 'state-1', 'state-2');
+  card.classList.add('state-0');
 
   document.getElementById('flashcard-current').textContent = state.flashcardIndex + 1;
 
+  updateFlashcardContent();
+}
+
+function updateFlashcardContent() {
+  const item = state.flashcardItems[state.flashcardIndex];
+  if (!item) return;
+
   const frontContent = document.getElementById('flashcard-front-content');
-  const backContent = document.getElementById('flashcard-back-content');
+  const cardState = state.flashcardState;
 
   if (state.currentCategory === 'kanji') {
-    frontContent.innerHTML = item.character;
-    backContent.innerHTML = `
-      <div class="flashcard-reading">${item.onyomi} / ${item.kunyomi}</div>
-      <div class="flashcard-meaning">${item.meaning}</div>
-    `;
+    if (cardState === 0) {
+      frontContent.innerHTML = `<div class="flashcard-main">${item.character}</div>`;
+    } else if (cardState === 1) {
+      frontContent.innerHTML = `
+        <div class="flashcard-label">Reading</div>
+        <div class="flashcard-reading-display">${item.onyomi} / ${item.kunyomi}</div>
+      `;
+    } else {
+      frontContent.innerHTML = `
+        <div class="flashcard-label">Meaning</div>
+        <div class="flashcard-meaning-display">${item.meaning}</div>
+      `;
+    }
   } else if (state.currentCategory === 'phrases') {
-    frontContent.innerHTML = item.japanese;
-    backContent.innerHTML = `
-      <div class="flashcard-meaning">${item.english}</div>
-      ${item.notes ? `<div class="flashcard-reading" style="font-size: 1rem; margin-top: 0.5rem; opacity: 0.9;">${item.notes}</div>` : ''}
-    `;
+    if (cardState === 0) {
+      frontContent.innerHTML = `<div class="flashcard-main">${item.japanese}</div>`;
+    } else if (cardState === 1) {
+      // Phrases don't have readings, so show notes or skip to english
+      if (item.notes) {
+        frontContent.innerHTML = `
+          <div class="flashcard-label">Notes</div>
+          <div class="flashcard-reading-display">${item.notes}</div>
+        `;
+      } else {
+        frontContent.innerHTML = `
+          <div class="flashcard-label">English</div>
+          <div class="flashcard-meaning-display">${item.english}</div>
+        `;
+      }
+    } else {
+      frontContent.innerHTML = `
+        <div class="flashcard-label">English</div>
+        <div class="flashcard-meaning-display">${item.english}</div>
+      `;
+    }
   } else {
-    frontContent.innerHTML = item.japanese;
-    backContent.innerHTML = `
-      <div class="flashcard-reading">${item.reading}</div>
-      <div class="flashcard-meaning">${item.english}</div>
-    `;
+    // Vocabulary
+    if (cardState === 0) {
+      frontContent.innerHTML = `<div class="flashcard-main">${item.japanese}</div>`;
+    } else if (cardState === 1) {
+      frontContent.innerHTML = `
+        <div class="flashcard-label">Reading</div>
+        <div class="flashcard-reading-display">${item.reading}</div>
+      `;
+    } else {
+      frontContent.innerHTML = `
+        <div class="flashcard-label">English</div>
+        <div class="flashcard-meaning-display">${item.english}</div>
+      `;
+    }
   }
+
+  updateFlashcardIndicator();
+}
+
+function updateFlashcardIndicator() {
+  const indicators = document.querySelectorAll('.state-indicator');
+  indicators.forEach((ind, i) => {
+    ind.classList.toggle('active', i === state.flashcardState);
+  });
 }
 
 function flipCard() {
   const card = document.getElementById('flashcard');
-  card.classList.toggle('flipped');
-  state.flashcardFlipped = !state.flashcardFlipped;
+
+  // Remove previous state class
+  card.classList.remove(`state-${state.flashcardState}`);
+
+  // Cycle through 3 states: 0 -> 1 -> 2 -> 0
+  state.flashcardState = (state.flashcardState + 1) % 3;
+
+  // Add new state class and trigger flip animation
+  card.classList.add(`state-${state.flashcardState}`, 'flipping');
+
+  // Update content
+  updateFlashcardContent();
+
+  // Remove animation class after it completes
+  setTimeout(() => {
+    card.classList.remove('flipping');
+  }, 300);
 }
 
 function nextCard() {
@@ -692,6 +759,7 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 let isSwiping = false;
+let touchHandled = false; // Prevent double-firing with onclick
 
 function initTouchGestures() {
   const flashcard = document.getElementById('flashcard');
@@ -701,17 +769,31 @@ function initTouchGestures() {
   flashcard.removeEventListener('touchstart', handleTouchStart);
   flashcard.removeEventListener('touchmove', handleTouchMove);
   flashcard.removeEventListener('touchend', handleTouchEnd);
+  flashcard.removeEventListener('click', handleCardClick);
 
   // Add touch listeners
   flashcard.addEventListener('touchstart', handleTouchStart, { passive: true });
   flashcard.addEventListener('touchmove', handleTouchMove, { passive: false });
-  flashcard.addEventListener('touchend', handleTouchEnd, { passive: true });
+  flashcard.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+  // Add click listener for desktop (with touch guard)
+  flashcard.addEventListener('click', handleCardClick);
+}
+
+function handleCardClick(e) {
+  // If touch already handled this interaction, skip
+  if (touchHandled) {
+    touchHandled = false;
+    return;
+  }
+  flipCard();
 }
 
 function handleTouchStart(e) {
   touchStartX = e.changedTouches[0].screenX;
   touchStartY = e.changedTouches[0].screenY;
   isSwiping = false;
+  touchHandled = false;
 }
 
 function handleTouchMove(e) {
@@ -730,9 +812,7 @@ function handleTouchMove(e) {
     // Visual feedback during swipe
     const flashcardInner = document.querySelector('.flashcard-inner');
     const translateX = (currentX - touchStartX) * 0.3;
-    flashcardInner.style.transform = state.flashcardFlipped
-      ? `rotateY(180deg) translateX(${-translateX}px)`
-      : `translateX(${translateX}px)`;
+    flashcardInner.style.transform = `translateX(${translateX}px)`;
   }
 }
 
@@ -744,10 +824,15 @@ function handleTouchEnd(e) {
 
   // Reset transform
   if (flashcardInner) {
-    flashcardInner.style.transform = state.flashcardFlipped ? 'rotateY(180deg)' : '';
+    flashcardInner.style.transform = '';
   }
 
   handleSwipeGesture();
+
+  // Prevent onclick from firing after touch
+  if (touchHandled) {
+    e.preventDefault();
+  }
 }
 
 function handleSwipeGesture() {
@@ -771,10 +856,15 @@ function handleSwipeGesture() {
       if (navigator.vibrate) {
         navigator.vibrate(10);
       }
+      touchHandled = true;
     }
-  } else if (!isSwiping && Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+  }
+
+  // Check for tap (small movement)
+  if (!isSwiping && Math.abs(diffX) < 15 && Math.abs(diffY) < 15) {
     // It was a tap, not a swipe - flip the card
     flipCard();
+    touchHandled = true;
   }
 
   // Reset values
@@ -806,8 +896,8 @@ function updateFlashcardHint() {
   const hint = document.querySelector('.flashcard-hint');
   if (hint) {
     hint.textContent = isMobileDevice()
-      ? 'Tap to flip • Swipe to navigate'
-      : 'Click card to flip • Use arrow keys to navigate';
+      ? 'Tap to cycle • Swipe left/right to navigate'
+      : 'Click to cycle • Arrow keys to navigate';
   }
 }
 

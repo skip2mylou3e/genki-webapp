@@ -125,17 +125,19 @@
         </div>
 
         <div class="flashcard-container">
-          <div class="flashcard" id="flashcard" onclick="flipCard()">
+          <div class="flashcard" id="flashcard">
             <div class="flashcard-inner">
               <div class="flashcard-front">
                 <div class="flashcard-content" id="flashcard-front-content"></div>
               </div>
-              <div class="flashcard-back">
-                <div class="flashcard-content" id="flashcard-back-content"></div>
-              </div>
             </div>
           </div>
-          <p class="flashcard-hint">Click card to flip</p>
+          <div class="flashcard-state-indicators">
+            <span class="state-indicator active" data-state="0">Japanese</span>
+            <span class="state-indicator" data-state="1">Reading</span>
+            <span class="state-indicator" data-state="2">English</span>
+          </div>
+          <p class="flashcard-hint">Tap card to cycle through Japanese → Reading → English</p>
         </div>
 
         <div class="flashcard-controls">
