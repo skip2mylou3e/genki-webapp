@@ -1,5 +1,98 @@
 // Genki Study App - Main Application
 
+// ===== Audio Pronunciation =====
+let speechSynthesis = window.speechSynthesis;
+let japaneseVoice = null;
+
+function initAudio() {
+  if (!speechSynthesis) {
+    console.warn('Speech synthesis not supported in this browser');
+    return;
+  }
+
+  // Load voices and find a Japanese voice
+  function loadVoices() {
+    const voices = speechSynthesis.getVoices();
+    japaneseVoice = voices.find(voice => voice.lang.startsWith('ja')) || null;
+
+    if (!japaneseVoice && voices.length > 0) {
+      // Try to find any voice that might work with Japanese
+      japaneseVoice = voices.find(voice =>
+        voice.lang.includes('ja') ||
+        voice.name.toLowerCase().includes('japanese')
+      );
+    }
+  }
+
+  // Load voices immediately if available
+  loadVoices();
+
+  // Chrome loads voices asynchronously
+  if (speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+}
+
+function speakJapanese(text) {
+  if (!speechSynthesis) {
+    console.warn('Speech synthesis not supported');
+    return;
+  }
+
+  // Cancel any ongoing speech
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ja-JP';
+  utterance.rate = 0.85; // Slightly slower for learning
+  utterance.pitch = 1;
+
+  if (japaneseVoice) {
+    utterance.voice = japaneseVoice;
+  }
+
+  speechSynthesis.speak(utterance);
+}
+
+function speakCurrentItem(item, category) {
+  if (!item) return;
+
+  let textToSpeak = '';
+
+  if (category === 'kanji') {
+    // For kanji, speak the character and its readings
+    textToSpeak = item.character;
+  } else if (category === 'phrases') {
+    textToSpeak = item.japanese;
+  } else {
+    // Vocabulary - speak the Japanese word
+    textToSpeak = item.japanese;
+  }
+
+  speakJapanese(textToSpeak);
+}
+
+function speakFlashcardItem() {
+  const item = state.flashcardItems[state.flashcardIndex];
+  if (item) {
+    speakCurrentItem(item, state.currentCategory);
+  }
+}
+
+function speakQuizQuestion() {
+  const item = state.quizItems[state.quizIndex];
+  if (!item) return;
+
+  // Only speak Japanese text (jp-en mode shows Japanese question)
+  if (state.quizType === 'jp-en') {
+    if (state.currentCategory === 'kanji') {
+      speakJapanese(item.character);
+    } else {
+      speakJapanese(item.japanese);
+    }
+  }
+}
+
 // ===== State Management =====
 const state = {
   currentChapter: null,
@@ -171,9 +264,12 @@ function renderBrowseList(items) {
   const list = document.getElementById('browse-list');
   list.innerHTML = '';
 
-  items.forEach(item => {
+  items.forEach((item, index) => {
     const div = document.createElement('div');
     div.className = `browse-item ${state.currentCategory === 'kanji' ? 'kanji' : ''}`;
+
+    const textToSpeak = item.japanese || item.character;
+    const audioBtn = `<button class="audio-btn" onclick="event.stopPropagation(); speakJapanese('${textToSpeak.replace(/'/g, "\\'")}')" title="Listen to pronunciation" aria-label="Play pronunciation">🔊</button>`;
 
     if (state.currentCategory === 'kanji') {
       div.innerHTML = `
@@ -185,6 +281,7 @@ function renderBrowseList(items) {
           <div class="kanji-meaning browse-english ${state.translationsHidden ? 'hidden' : ''}">${item.meaning}</div>
           <div class="kanji-examples browse-english ${state.translationsHidden ? 'hidden' : ''}">${item.examples?.join(', ') || ''}</div>
         </div>
+        ${audioBtn}
       `;
     } else if (state.currentCategory === 'phrases') {
       div.innerHTML = `
@@ -193,6 +290,7 @@ function renderBrowseList(items) {
           <div class="browse-english ${state.translationsHidden ? 'hidden' : ''}">${item.english}</div>
           ${item.notes ? `<div class="browse-reading browse-english ${state.translationsHidden ? 'hidden' : ''}">${item.notes}</div>` : ''}
         </div>
+        ${audioBtn}
       `;
     } else {
       div.innerHTML = `
@@ -202,6 +300,7 @@ function renderBrowseList(items) {
         </div>
         <div class="browse-english ${state.translationsHidden ? 'hidden' : ''}">${item.english}</div>
         <span class="browse-type">${item.type || ''}</span>
+        ${audioBtn}
       `;
     }
 
@@ -438,6 +537,7 @@ function updateQuizQuestion() {
   const optionsEl = document.getElementById('quiz-options');
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('quiz-next-btn');
+  const audioBtn = document.getElementById('quiz-audio-btn');
 
   feedbackEl.className = 'quiz-feedback';
   feedbackEl.textContent = '';
@@ -455,6 +555,8 @@ function updateQuizQuestion() {
     } else {
       questionEl.textContent = item.japanese;
     }
+    // Show audio button for Japanese questions
+    if (audioBtn) audioBtn.style.display = 'inline-flex';
   } else {
     questionEl.className = 'quiz-question english';
     if (state.currentCategory === 'kanji') {
@@ -462,6 +564,8 @@ function updateQuizQuestion() {
     } else {
       questionEl.textContent = item.english;
     }
+    // Hide audio button for English questions
+    if (audioBtn) audioBtn.style.display = 'none';
   }
 
   // Generate options
@@ -998,6 +1102,9 @@ showView = function(viewName) {
 
 // ===== Initialize App =====
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize audio
+  initAudio();
+
   // Set initial viewport height
   setViewportHeight();
 

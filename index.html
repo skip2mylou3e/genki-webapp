@@ -132,6 +132,9 @@
               </div>
             </div>
           </div>
+          <button class="audio-btn flashcard-audio-btn" onclick="speakFlashcardItem()" title="Listen to pronunciation" aria-label="Play pronunciation">
+            🔊 Listen
+          </button>
           <div class="flashcard-state-indicators">
             <span class="state-indicator active" data-state="0">Japanese</span>
             <span class="state-indicator" data-state="1">Reading</span>
@@ -167,7 +170,10 @@
         </div>
 
         <div class="quiz-container">
-          <div class="quiz-question" id="quiz-question"></div>
+          <div class="quiz-question-wrapper">
+            <div class="quiz-question" id="quiz-question"></div>
+            <button class="audio-btn quiz-audio-btn" id="quiz-audio-btn" onclick="speakQuizQuestion()" title="Listen to pronunciation" aria-label="Play pronunciation">🔊</button>
+          </div>
           <div class="quiz-options" id="quiz-options">
             <!-- Options will be inserted here -->
           </div>

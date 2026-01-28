@@ -481,7 +481,7 @@ input {
 
 /* Kanji browse item */
 .browse-item.kanji {
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: 80px 1fr auto;
 }
 
 .kanji-character {
@@ -908,6 +908,61 @@ input {
 .quiz-next-btn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+}
+
+/* ===== Audio Buttons ===== */
+.audio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  flex-shrink: 0;
+}
+
+.audio-btn:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.audio-btn:active {
+  transform: scale(0.95);
+}
+
+/* Browse item audio button */
+.browse-item .audio-btn {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+/* Flashcard audio button */
+.flashcard-audio-btn {
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+/* Quiz audio button */
+.quiz-question-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.quiz-audio-btn {
+  padding: 0.5rem 1rem;
+  font-size: 1.25rem;
 }
 
 /* ===== Quiz Complete View ===== */
@@ -1390,8 +1445,13 @@ input {
 
   .browse-item {
     padding: 1rem;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
     gap: 0.5rem;
+    position: relative;
+  }
+
+  .browse-item .audio-btn {
+    align-self: center;
   }
 
   .browse-jp {
@@ -1407,8 +1467,12 @@ input {
   }
 
   .browse-item.kanji {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
     text-align: center;
+  }
+
+  .browse-item.kanji .audio-btn {
+    align-self: start;
   }
 
   .kanji-character {
@@ -1462,6 +1526,16 @@ input {
 
   .flashcard-hint {
     font-size: 0.8rem;
+  }
+
+  .flashcard-audio-btn {
+    margin-top: 0.75rem;
+    padding: 0.6rem 1.25rem;
+  }
+
+  .quiz-audio-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 1.1rem;
   }
 
   .flashcard-state-indicators {
@@ -1867,6 +1941,14 @@ input {
   .quiz-next-btn:active {
     transform: scale(0.98);
   }
+
+  .audio-btn:hover {
+    transform: none;
+  }
+
+  .audio-btn:active {
+    transform: scale(0.9);
+  }
 }
 
 /* Dark mode support */
@@ -1914,6 +1996,10 @@ input {
 
   .flashcard-meaning-display {
     color: var(--text-primary);
+  }
+
+  .audio-btn {
+    background: linear-gradient(135deg, var(--accent) 0%, #0d9488 100%);
   }
 }
 
